@@ -1,0 +1,353 @@
+<HTML>
+    <HEAD>
+        <TITLE>Face Detection</TITLE>
+    </HEAD>
+    <BODY BGCOLOR="FFFFFF">
+        <HR>
+        
+        <H1 align="center">Project 2 Face Detection</H1>
+        <p align="center">ZHANG Haoqian and LUO Han</p>
+        <p align="center"> March 16, 2018</p><br><br>
+        <H2>1 Overview </H2>
+        <p>This project aims to implement a sliding window face detector. The basic idea is to 
+            train a support vector machine with HoG features of training data (including face and non-face), 
+            and then use the trained linear classifier to classify sliding windows into face or 
+        non-face at multiple scales.<br><br></p>
+        
+        <H2>2 Implementation</H2>
+        <ul>
+            <li>
+                <H3>Positive and negative examples collection:</H3>
+                To colloect positive(face) examples and negative(non-faces) examples, this porject firstly 
+                extracts HoG features from both positive and negative examples through a call to vl_hog. 
+                Initial positive examples are taken from positive training database of 6,713 cropped 36x36 
+                faces frome the <a href="http://www.vision.caltech.edu/Image_Datasets/Caltech_10K_WebFaces/">Caltech Web Faces project</a>
+                Then, negative examples are randomly extracted from only 275 non-face scene images. 
+                3 kind of cell size (step size) are tested when completing this project. It shows that  
+                average precision (AP) would higher with smaller cell size (step size).
+            </li>
+            <li>
+                <H3>SVM training on faces and non-faces:</H3>
+                To train a linear classifier using support vector machine from the positive and negative examples 
+                with a call to vl_trainsvm. The inputs are feature matrixes and binary arrays of both positive examples 
+                and negative examples. The output of training is a matrix of [w b].
+            </li>
+            <li>
+                <H3>Face detector at multiple scales:</H3>
+                To detect face at multiple scales, a test image is scaled several times for detection and 
+                36x36 slide window is used for detector. (The reason for scaling the test image instead of 
+                scaling slide window size is to shorten the time cost of detection.) Then, the face 
+                detector is run at multiple scales and then call non_max_supr_bbox to remove duplicate detections.
+            </li>
+            <li>
+                <H3>Hard negative mining (extra credit):</H3>
+                In order to train a better classifier to do face detector with higher average precision (AP), 
+                hard negative mining is done after applying initial classifier to face detection. Based on previous  
+                steps, initial classifier is used to do face detection in non-face scene images. Since it 
+                is confirmed that there is not any face in non-fece scene images, the false positive detections in those images
+                are treated as hard negative. Then the HoG features of those hard negative examples are extracted 
+                and added to create a new negative features. Next, initial positive features and the new negative features
+                are used to train a new linear classifier.
+            </li>
+            <li>
+                <H3>Utilize alternative positive training data (extra credit):</H3>
+                After making use of given dataset from the project code, an additinal positive data (face images) 
+                is utilized for classifier training. The chosen dataset is <a href="http://vis-www.cs.umass.edu/lfw/#deepfunnel-anchor">LFW dataset (Labeled Faces in the Wild).</a>
+            </li>
+        </ul>
+        <br>
+        
+        <H2>3 Discussion of parameters and hard negative mining</H2>
+        <p>A total of five parameters would have influence on the detecting performace(e.g. average precision 
+            and running time). Here, the initial values of five parameters used were:
+            <ul>
+                (1) Lambda for vl_svmtrain: 0.0001;<br>
+                (2) Confidence threshold: 0.75;<br>
+                (3) Cell size and step size: 4 pixels;<br>
+                (4) Number of negative examples: 10,000;<br>
+                (5) Scales: [1.2,1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.15,0.1,0.06].<br>
+            </ul>
+        </p>
+        <ul>
+        <H3>3.1 Lambda</H3>
+        <p>
+            In the cost function of SVM, when lambda is too small, the classifier will 
+            be overfit, resulting in low bias and high variance. When lambda is too large, 
+            the classifier would be underfit, resulting in high bias and low variance. Hence, 
+            a appropriate lambda should be used in this classifier to achieve good classification performance.
+            Here, the proposed face detector use 0.0001 as the value of lambda.
+        </p>
+        <br>
+        <H3>3.2 Confidence threshold</H3>
+        <p>
+            In this part, 6 different values of confidence threshold were used to classify face and analyze 
+            its influence on average precision. The comparison results are shown in Table 2. Through comparison 
+            and analysis, the detecotr showed a good performance when confidence threshold is 0.75.
+        </p>
+        <center>
+            <table border="1" cellpadding="10" cellspacing="1" width="60%">
+                <col width="30" />
+                <col width="30" />
+                <caption>Table 2 Average precision under different confidence threshold</caption>
+                <tr>
+                    <th>Confidence threshold</th>
+                    <th>Average Precision</th>
+                </tr>
+                <tr>
+                    
+                    <td><center>0.70</center></td>
+                    <td><center>0.882</center></td>
+                    
+                </tr>
+                <tr>
+                    <td><center><font color="red">0.75</font></center></td>
+                    <td><center><font color="red">0.886</font></center></td>
+                </tr>
+                <tr>
+                    <td><center>0.80</center></td>
+                    <td><center>0.884</center></td>
+                </tr>
+                <tr>
+                    <td><center>0.90</center></td>
+                    <td><center>0.880</center></td>
+                </tr>
+                <tr>
+                    <td><center>1.00</center></td>
+                    <td><center>0.876</center></td>
+                </tr>
+                <tr>
+                    <td><center>1.25</center></td>
+                    <td><center>0.873</center></td>
+                </tr>
+            </table>
+        </center>
+        <br>
+        <H3>3.3 Cell size & step size</H3>
+        <p>
+            When changing cell size or step size, average precision of a face detector could 
+            be improved. Cell size and step size are kept the same in this implementation. 
+            The smaller cell size and sep size are, the higher average precision of detector is. After 
+            testing, cell size and step size with 3 pixels showed the best performance.
+        </p>
+        <center>
+            <table border="1" cellpadding="10" cellspacing="1" width="100%">
+                <col width="25%" />
+                <col width="25%" />
+                <col width="50%" />
+                <caption>Table 3 Average precision under different cell size & step size</caption>
+                <tr>
+                    <th>Cell size & step size</th>
+                    <th>Average Precision</th>
+                    <th>Face template HoG visualization</th>
+                </tr>
+                <tr>
+                    <td><center><font color="red">3 pixels</font></center></td>
+                    <td><center><font color="red">0.896</font></center></td>
+                    <td><center><IMG SRC="./hog_3.png" height="250"></center></td>
+                </tr>
+                <tr>
+                    <td><center>4 pixels</center></td>
+                    <td><center>0.886</center></td>
+                    <td><center><IMG SRC="./hog_4.png" height="250"></center></td>
+                </tr>
+                <tr>
+                    <td><center>6 pixels</center></td>
+                    <td><center>0.848</center></td>
+                    <td><center><IMG SRC="./hog_6.png" height="250"></center></td>
+                </tr>
+            </table>
+        </center>
+        <br>
+        <H3>3.4 Number of negative examples</H3>
+        <p>
+        In order to improve the average precision, it is firstly assumed that inceasing 
+        the number of negative examples would increasee the average precision of alogrithm 
+        and stabilize the random negative examples from limited non-face-scene images. Hence, 
+        4 different number of negative examples (6713, 10000, 20000, 30000) were used for testing
+        algorithm and analyisis in Table 4. (6713 meanas the number of negative examples is the same 
+        as the number of given positive examples.) It is obvious that the average will increase 
+        with the increasing of the number of negative examples within a certain range. 
+        But when the number of negative examples is too large, average precision would decreases. 
+        Considering both average precision and running time cost, the number of 10000 would be used 
+        for this algorithm.
+        <center>
+            <table border="1" cellpadding="10" cellspacing="1" width="80%">
+                <col width="30" />
+                <col width="30" />
+                <caption>Table 4 Average precision under different number of negative examples</caption>
+                <tr>
+                    <th>Number of negative exmaples</th>
+                    <th>Average Precision</th>
+                </tr>
+                <tr>
+                    <td><center>6713</center></td>
+                    <td><center>0.842</center></td>
+                </tr>
+                <tr>
+                    <td><center>10000</center></td>
+                    <td><center>0.886</center></td>
+                </tr>
+                <tr>
+                    <td><center><font color="red">20000</font></center></td>
+                    <td><center><font color="red">0.892</font></center></td>
+                </tr>
+                <tr>
+                    <td><center>30000</center></td>
+                    <td><center>0.878</center></td>
+                </tr>
+            </table>
+        </center>
+        <br>
+        <H3>3.5 Sliding window at multiple scales</H3>
+        <p> 
+            Average precision of face detector under three different sets of multiple scales were
+            considered and compared in Table 5. From this table, the average precision for the second
+            scales showed the best performance.
+        </p>
+        <center>
+            <table border="1" cellpadding="10" cellspacing="1" width="80%">
+                <col width="70%" />
+                <col width="30%" />
+                <caption>Table 5 Average precision under different scales</caption>
+                <tr>
+                    <th>Scales </th>
+                    <th>Average Precision</th>
+                </tr>
+                <tr>
+                    <td><center>scales = [1.15,0.95,0.8,0.65,0.5,0.35,0.2,0.1,0.06]</center></td>
+                    <td><center>0.864</center></td>
+                </tr>
+                <tr>
+                    <td><center><font color="red">scales = [1.2,1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.15,0.1,0.06]</font></center></td>
+                    <td><center><font color="red">0.886</font></center></td>
+                </tr>
+                <tr>
+                    <td><center>scales = [1.25,1.1,0.95,0.8,0.65,0.5,0.35,0.2,0.1,0.06]</center></td>
+                    <td><center>0.860</center></td>
+                </tr>
+            </table>
+        </center> <br>
+        <H3>3.6 Hard negtive mining</H3>
+        <p>
+            Hard negative mining is implemented in this time as the explanation in the part of "2 Implementation". 
+            The code in run_detector is modified to create mine_hard_negative.m and it is used in non_face_scene given by this project. And the positive detections are 
+            treated as hard negatives. Then, hard negative samples were added into negative dataset and used for new round training. 
+            Following images are selected examples of hard negative images.
+                    <center>
+                <table border="0" cellpadding="5" cellspacing="0" width="80%">
+                    <tr>
+                        <th><IMG SRC="./average_precision3pi_loop1_mine_1_2.jpg" height="50"></th>
+                        <th><IMG SRC="./average_precision3pi_loop1_mine_1_6.jpg" height="50"></th>
+                        <td><center><IMG SRC="./average_precision3pi_loop1_mine_1_14.jpg" height="50"></center></td>
+                        <td><center><IMG SRC="./average_precision3pi_loop1_mine_1_20.jpg" height="50"></center></td>
+                        <td><center><IMG SRC="./average_precision3pi_loop1_mine_1_39.jpg" height="50"></center></td>
+                    </tr>
+                    <tr>
+                        <td><center>(a)</center></td>
+                        <td><center>(b)</center></td>
+                        <td><center>(c)</center></td>
+                        <td><center>(d)</center></td>
+                        <td><center>(e)</center></td>
+                    </tr>
+                </table>
+            </center> 
+            <center>Fig. 1 Selected examples from additional positive dataset</center><br>
+        
+        
+        </p>
+        <H3>3.7 Utilize face images in LFW dataset</H3>
+        <p>
+            In order to improve the performance of the developed face classifier, an additional face dataset 
+            called LFW (Labeled Faces in the Wild) dataset is used. In this dataset, each images is a 250*250 jpg. 
+            But the original positive training images from project information are all in 36*36 sizes. Hence, when training with 
+            additional positive examples, those images is used after resizing to 36*36.
+            In this try, all those images are directly resized to 36*36 images without any pre-processing. 
+            Some examples of additional positive images are as following images. However, after training with those 
+            additional positive images, the average precision of face detector decreases. The reason might be that 
+            there are redundant scene information besides human face in the additional face images. Therefore, the 
+            performance of face detector decreases.<br><br>
+            <center>
+                <table border="0" cellpadding="5" cellspacing="0" width="80%">
+                    <tr>
+                        <th><IMG SRC="./Abdullah_Gul_0011.jpg" height="120"></th>
+                        <th><IMG SRC="./Abdullatif_Sener_0001.jpg" height="120"></th>
+                        <td><center><IMG SRC="./Abel_Aguilar_0001.jpg" height="120"></center></td>
+                        <td><center><IMG SRC="./Abid_Hamid_Mahmud_Al-Tikriti_0003.jpg" height="120"></center></td>
+                        <td><center><IMG SRC="./Adolfo_Aguilar_Zinser_0002.jpg" height="120"></center></td>
+                    </tr>
+                    <tr>
+                        <td><center>(a)</center></td>
+                        <td><center>(b)</center></td>
+                        <td><center>(c)</center></td>
+                        <td><center>(d)</center></td>
+                        <td><center>(e)</center></td>
+                    </tr>
+                </table>
+            </center> 
+            <center>Fig. 2 Selected examples from additional positive dataset</center><br>
+            <center>
+                <table border="1" cellpadding="10" cellspacing="1" width="80%">
+                    <col width="70%" />
+                    <col width="30%" />
+                    <caption>Table 6 Average precision under different positive examples</caption>
+                    <tr>
+                        <th>Positive dataset</th>
+                        <th>Average Precision</th>
+                    </tr>
+                    <tr>
+                        <td><center>Original(Caltech_faces) + Addtioanl(LFW dataset)</center></td>
+                        <td><center>0.871</center></td>
+                    </tr>
+                    <tr>
+                        <td><center>Original(Caltect_faces)</center></td>
+                        <td><center>0.886</center></td>
+                    </tr>
+                </table>
+            </center> <br>
+        </ul><br>
+        <H2>4 Results</H2>
+        <p>According to above discussion and considering both time cost and average precision, the value of parameters in final 
+            classifier (without hard negative mining) are as follows:
+            <ul>
+                (1) Lambda for vl_svmtrain: 0.0001;<br>
+                (2) Confidence threshold: 0.75;<br>
+                (3) Cell size and step size: 4 pixels;<br>
+                (4) Number of negative examples: 10,000;<br>
+                (5) Scales: [1.2,1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.15,0.1,0.06].<br>
+            </ul>
+        </p>
+        <ul>
+            <H3>4.1 HoG visualization and precision-recall curve</H3>
+            <center><IMG SRC="./hog_4.png" height="400"></center>
+            <p><center> Fig. 3 Face template HoG visualization</center></p> <br>
+            <center><IMG SRC="./ap_final.png" height="400"></center>
+            <p><center> Fig. 4 Precision Recall Curve</center></p> 
+            
+            <H3>4.2 Extra test images</H3>
+            <p>For the given extra test images, most faces are detected with small amount of 
+                false positives under final classifier and detector. The detection results 
+                are shown in following images. 
+            </p>
+            <center>
+                <IMG SRC="./detections_cs143_2013_class_easy_01.jpg.png" width="700"><br><br>
+                <IMG SRC="./detections_cs143_2013_class_easy_02.jpg.png" width="700"><br><br>
+                <IMG SRC="./detections_cs143_2013_class_hard_03.jpg.png" width="700"><br><br>
+                <IMG SRC="./detections_faculty_roster.jpg.png" width="700"><br><br>
+            </center>
+        </ul>
+        <H2>5 Reference</H2>
+        <ul>
+            <li>Dalal, Navneet, and Bill Triggs. "Histograms of oriented gradients for 
+                human detection." <I>Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on.</I> Vol. 1. IEEE, 2005. 
+            <a href="https://lear.inrialpes.fr/people/triggs/pubs/Dalal-cvpr05.pdf">[PDF]</a> </li><br><br>
+        </ul>
+        
+        <H2>6 Email</H2>
+        <ul>
+            <li>ZHANG Haoqian: <I><a href="mailto:haoqian.zhang@connect.ust.hk?cc=hluoaf@connect.ust.hk&subject=Feedback%20of%20Intelligent%20Scissor">haoqian.zhang@connect.ust.hk;</a></I> </li>
+            <li>LUO Han: <I><a href="mailto:hluoaf@connect.ust.hk?cc=haoqian.zhang@connect.ust.hk&subject=Feedback%20of%20Intelligent%20Scissor">hluoaf@connect.ust.hk.</a></I> </li>
+        </ul>
+        
+        <HR>
+    </BODY>
+</HTML>
